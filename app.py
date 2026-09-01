@@ -272,22 +272,11 @@ with st.sidebar:
 # =============================================================================
 
 st.markdown(
-    """
-    <div class="header-container">
-
-        <div class="gradient-title">
-            NEXA TRIAGE OPERATIONAL CONTROL
-        </div>
-
-        <div class="subtitle">
-            Deterministic RAG Routing &nbsp;•&nbsp;
-            Local Llama 3 Grounding &nbsp;•&nbsp;
-            Regex Risk Engine
-        </div>
-
-    </div>
-    """,
-    unsafe_allow_html=True,
+    '<div class="header-container">'
+    '<div class="gradient-title">NEXA TRIAGE OPERATIONAL CONTROL</div>'
+    '<div class="subtitle">Deterministic RAG Routing • Local Llama 3 Grounding • Regex Risk Engine</div>'
+    '</div>',
+    unsafe_allow_html=True
 )
 
 
