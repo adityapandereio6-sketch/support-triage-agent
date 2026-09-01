@@ -1,222 +1,202 @@
-# 🤖 Support Triage Agent
+# Deterministic Support Triage Agent
 
-An AI-powered customer support triage system that analyzes incoming support queries, retrieves relevant knowledge-base information, detects potential risk, and routes queries based on confidence.
+🚀 A deterministic AI support triage system using TF-IDF RAG, cosine similarity, regex-based risk detection, and local LLM generation through Ollama.
 
 ## Overview
 
-Support Triage Agent is designed to simulate an intelligent first-line support system.
+The Deterministic Support Triage Agent processes technical support queries and decides whether they should:
 
-The application combines:
+- 🤖 Receive an automatic AI-generated response
+- 📚 Retrieve relevant information from a verified knowledge base
+- ⚠️ Be escalated to human review due to risky content
+- 🔍 Be escalated because of low retrieval confidence
 
-- TF-IDF-based information retrieval
-- Cosine similarity for query matching
-- Confidence-based routing
-- Regex-based risk detection
-- Local LLM response generation using Ollama and Llama 3
-- Interactive Streamlit interface
+The project demonstrates a practical AI pipeline combining Retrieval-Augmented Generation (RAG), deterministic routing, risk detection, and local LLM integration.
 
-The system helps determine whether a customer query can be answered automatically or should be escalated for additional support.
-
----
-
-## ✨ Features
-
-### 🔍 Knowledge Retrieval
-
-The system converts support documents and user queries into TF-IDF vectors and uses cosine similarity to find the most relevant knowledge-base entry.
-
-### 📊 Confidence-Based Routing
-
-The similarity score is used to estimate retrieval confidence.
-
-- High-confidence queries can be answered using retrieved knowledge.
-- Low-confidence queries can be flagged for escalation.
-
-### ⚠️ Risk Detection
-
-Regex-based pattern matching is used to detect potentially sensitive or high-risk queries.
-
-Examples may include:
-
-- Security-related issues
-- Unauthorized access
-- Account compromise
-- Urgent escalation scenarios
-
-### 🧠 Local LLM Integration
-
-The project integrates with Ollama to generate responses using a locally running Llama model.
-
-This allows the system to combine deterministic retrieval and routing with natural-language response generation.
-
-### 🌐 Streamlit Dashboard
-
-The project includes an interactive Streamlit application for submitting support queries and viewing the triage results.
-
----
-
-## 🏗️ Architecture
+## Architecture
 
 ```text
-User Support Query
-        │
-        ▼
-Streamlit Interface (app.py)
-        │
-        ▼
-Support Triage Engine (triage_agent.py)
-        │
-        ├── TF-IDF Vectorization
-        │
-        ├── Cosine Similarity Retrieval
-        │
-        ├── Confidence Evaluation
-        │
-        ├── Regex Risk Detection
-        │
-        └── Routing Decision
-                │
-                ▼
-        ┌───────────────────┐
-        │                   │
-        ▼                   ▼
- Automated Response     Escalation
-        │                   │
-        ▼                   ▼
- Local Ollama LLM    Human Support
-```
+User Query
+    │
+    ▼
+Risk Detection Engine
+    │
+    ├── Risky Query ──────────────► HUMAN TRIAGE
+    │
+    ▼
+TF-IDF RAG Engine
+    │
+    ▼
+Cosine Similarity Retrieval
+    │
+    ├── Low Similarity ───────────► HUMAN TRIAGE
+    │
+    ▼
+Strict Local LLM Generator
+    │
+    ▼
+AUTO RESPONSE
+Features
+🔎 TF-IDF RAG Retrieval
 
----
+The system converts knowledge-base documents into TF-IDF vectors and retrieves the most relevant document using cosine similarity.
 
-## 🛠️ Technologies Used
+User Query
+    ↓
+TF-IDF Vectorization
+    ↓
+Cosine Similarity
+    ↓
+Most Relevant Knowledge Section
+⚠️ Risk Detection Engine
 
-- Python
-- Streamlit
-- Scikit-learn
-- TF-IDF
-- Cosine Similarity
-- Regular Expressions
-- Ollama
-- Llama 3
+Regex-based detection identifies potentially unreliable or high-liability concepts.
 
----
+Examples include:
 
-## 📁 Project Structure
+Overunity
+Free energy
+Perpetual motion
+Anti-gravity blueprints
+UFO propulsion
+Warp drive generators
+Zero-point power
 
-```text
+Risky queries are automatically routed to:
+
+HUMAN_TRIAGE
+📊 Confidence-Based Routing
+
+After retrieval, the similarity score is compared against a configurable threshold.
+
+Similarity Score >= Threshold
+        ↓
+AUTO_RESPOND
+
+Similarity Score < Threshold
+        ↓
+HUMAN_TRIAGE
+
+This prevents the AI model from responding when the knowledge base does not confidently support the query.
+
+🤖 Local LLM Generation
+
+The project integrates with a locally running Llama model through Ollama.
+
+The LLM receives:
+
+The user's query
+The retrieved knowledge-base context
+A strict grounding instruction
+
+The model is instructed to answer only using the provided context, reducing unsupported responses.
+
+Technology Stack
+Python
+Scikit-learn
+TF-IDF Vectorization
+Cosine Similarity
+Regular Expressions
+Retrieval-Augmented Generation (RAG)
+Ollama
+Llama 3
+Requests
+GitHub Actions
+Unit Testing
+Project Structure
 support-triage-agent/
 │
-├── app.py
 ├── triage_agent.py
-├── README.md
+├── tests/
+│   └── test_triage_agent.py
+│
+├── .github/
+│   └── workflows/
+│       └── tests.yml
+│
 ├── requirements.txt
-└── .gitignore
-```
-
----
-
-## ⚙️ Installation
+├── .gitignore
+├── README.md
+└── LICENSE
+Installation
 
 Clone the repository:
 
-```bash
 git clone https://github.com/adityapandereio6-sketch/support-triage-agent.git
-```
 
 Navigate to the project directory:
 
-```bash
 cd support-triage-agent
-```
 
-Install the dependencies:
+Install dependencies:
 
-```bash
 pip install -r requirements.txt
-```
+Ollama Setup
 
----
+Install Ollama and download the Llama model:
 
-## 🧠 Ollama Setup
-
-Install Ollama and make sure the Ollama service is running locally.
-
-Pull the required Llama model:
-
-```bash
 ollama pull llama3
-```
 
-Then verify that Ollama is running before starting the application.
+Start the Ollama server:
 
----
+ollama serve
 
-## 🌐 Running the Application
+The application connects to:
 
-Start the Streamlit application:
+http://localhost:11434
+Running the Project
 
-```bash
-streamlit run app.py
-```
+Run:
 
-Then open the local URL displayed in your terminal.
+python triage_agent.py
 
----
+The verification runner tests:
 
-## 🔄 Example Workflow
+A valid technical query
+A risky query detected by the risk engine
+Example Workflow
+Valid Technical Query
+        ↓
+Risk Check Passed
+        ↓
+TF-IDF Retrieval
+        ↓
+Similarity Above Threshold
+        ↓
+Local Llama Generation
+        ↓
+AUTO_RESPOND
+Testing
 
-```text
-User enters support query
-        │
-        ▼
-Query converted to TF-IDF vector
-        │
-        ▼
-Cosine similarity search
-        │
-        ▼
-Confidence score calculated
-        │
-        ├── High Confidence
-        │       │
-        │       ▼
-        │   Retrieve knowledge
-        │       │
-        │       ▼
-        │   Generate response
-        │
-        └── Low Confidence
-                │
-                ▼
-             Escalate
-```
+Run the unit tests locally:
 
----
+python -m unittest discover -s tests
 
-## 🚀 Future Improvements
+The test suite verifies:
 
-Potential improvements include:
+TF-IDF retrieval functionality
+Risk keyword detection
+Human escalation for risky queries
+Low-confidence routing
+Automatic response routing
 
-- Persistent knowledge-base storage
-- Vector database integration
-- Semantic embeddings
-- Multi-document retrieval
-- Conversation memory
-- User authentication
-- Cloud-based LLM support
-- Support analytics dashboard
-- REST API integration
+The project also uses GitHub Actions CI to automatically run tests whenever code is pushed to the repository.
 
----
+Future Improvements
+Streamlit web interface
+Larger document knowledge bases
+Multi-document retrieval
+Persistent vector storage
+Conversation history
+REST API integration
+Docker deployment
+Advanced semantic embeddings
+Author
 
-## 👨‍💻 Author
-
-**Aditya Pandere**
+Aditya Pandere
 
 GitHub: https://github.com/adityapandereio6-sketch
 
----
+License
 
-## 📄 License
-
-This project is intended for educational and portfolio purposes.
+This project is licensed under the MIT License.
