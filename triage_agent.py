@@ -4,18 +4,23 @@ Deterministic Support Triage Agent
 =============================================================================
 
 Architecture:
-- Knowledge Base : Physics research text divided into topical sections
-- RAG Engine     : TF-IDF vectorization + cosine similarity retrieval
-- Risk Engine    : Regex-based risk term detection
-- LLM Layer      : Optional local Llama 3 integration through Ollama
-- Router         : Routes queries to auto-response or human triage
+- Knowledge Base  : Physics research content split into topical sections
+- RAG Engine      : TF-IDF + cosine similarity retrieval
+- Risk Engine     : Regex-based risk detection
+- LLM Layer       : Optional local Llama 3 generation through Ollama
+- Router          : Auto-response or human-triage decision
+
+The application supports two modes:
+
+1. LOCAL MODE
+   If Ollama is running, responses are generated using Llama 3.
+
+2. DEPLOYMENT MODE
+   If Ollama is unavailable, the system returns a clean response based on
+   the retrieved knowledge-base context.
 
 Dependencies:
     pip install scikit-learn requests
-
-Optional Ollama setup:
-    ollama pull llama3
-    ollama serve
 =============================================================================
 """
 
@@ -23,140 +28,168 @@ import re
 import requests
 
 from typing import Dict, Tuple
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 
 # =============================================================================
-# SECTION 1: KNOWLEDGE BASE
+# SECTION 1 — KNOWLEDGE BASE
 # =============================================================================
 
 KNOWLEDGE_BASE = [
 
-    # [KB-00] Negative Mass — Core Definition
+    # -------------------------------------------------------------------------
+    # KB-00
+    # -------------------------------------------------------------------------
+
     """
     Negative Mass and Exotic Matter: Core Definition.
 
     In Newtonian gravity, mass plays three distinct roles:
-    inertial mass (resistance to acceleration, F=ma),
-    passive gravitational mass (response to a gravitational field),
-    and active gravitational mass (source of a gravitational field).
+
+    - Inertial mass: resistance to acceleration.
+    - Passive gravitational mass: response to a gravitational field.
+    - Active gravitational mass: source of a gravitational field.
 
     The Equivalence Principle, a cornerstone of General Relativity,
-    demands that all three are equal.
+    requires these forms of mass to be equivalent.
 
-    A hypothetical material with negative values for any of these
-    roles is termed exotic matter.
+    A hypothetical material with negative values for these roles is
+    commonly referred to as exotic matter.
 
-    No Standard Model particle has been observed with negative
-    inertial mass.
+    No Standard Model particle has been observed with negative inertial mass.
     """,
 
-    # [KB-01] Negative Mass — Physical Consequences
+
+    # -------------------------------------------------------------------------
+    # KB-01
+    # -------------------------------------------------------------------------
+
     """
-    Negative Mass and Exotic Matter: Solutions and Wormholes.
+    Negative Mass and Exotic Matter: Wormholes and Theoretical Applications.
 
-    Exotic matter with negative energy density is mathematically
-    permitted in General Relativity.
+    Exotic matter with negative energy density is mathematically discussed
+    within General Relativity.
 
-    It is required to support the throat of traversable wormholes
-    (Morris-Thorne wormholes) and to construct the metric for the
-    Alcubierre Warp Drive.
+    Such exotic matter is associated with theoretical models including
+    traversable wormholes and the Alcubierre warp-drive metric.
 
-    In quantum field theory, local negative energy densities are
-    demonstrated by the Casimir effect, though scaling this to
-    macroscopic exotic matter remains speculative.
+    Quantum field theory can demonstrate localized negative energy density
+    under specific conditions, such as the Casimir effect.
+
+    However, scaling these effects into macroscopic quantities of exotic
+    matter remains speculative.
     """,
 
-    # [KB-02] The Bondi Negative Mass Paradox
+
+    # -------------------------------------------------------------------------
+    # KB-02
+    # -------------------------------------------------------------------------
+
     """
-    The Bondi Negative Mass Paradox (Runaway Motion).
+    The Bondi Negative Mass Paradox: Runaway Motion.
 
-    Hermann Bondi (1957) analyzed the interaction of positive mass
-    (+M) and negative mass (-m).
+    Hermann Bondi analyzed interactions between positive and hypothetical
+    negative mass.
 
-    The positive mass attracts the negative mass, while the negative
-    mass repels the positive mass.
+    In a simplified theoretical scenario, positive mass attracts negative
+    mass while negative mass can produce repulsive gravitational behavior.
 
-    This leads to runaway motion where both masses accelerate
-    indefinitely in the same direction from rest.
+    This can result in theoretical runaway motion where both objects
+    accelerate continuously in the same direction.
 
-    Although total momentum and total kinetic energy remain zero
-    since negative mass carries negative kinetic energy, this
-    perpetual self-acceleration presents thermodynamic and stability
-    paradoxes.
+    Such behavior raises questions about stability and physical realism.
     """,
 
-    # [KB-03] Cosmological Constant and Dark Energy
+
+    # -------------------------------------------------------------------------
+    # KB-03
+    # -------------------------------------------------------------------------
+
     """
-    Cosmological Constant (Lambda) and Dark Energy.
+    Cosmological Constant and Dark Energy.
 
-    The cosmological constant (Lambda) represents a positive vacuum
-    energy density with an equation of state:
+    The cosmological constant, commonly represented by Lambda, represents
+    vacuum energy associated with the accelerating expansion of the universe.
 
-    w = p / (rho * c^2)
+    Dark energy is associated with negative pressure on cosmological scales.
 
-    of exactly -1.
+    This negative pressure can oppose gravitational collapse and contribute
+    to the observed accelerated expansion of the universe.
 
-    This negative pressure opposes standard gravitational collapse
-    and drives the accelerating expansion of the universe.
-
-    This acts as a form of repulsive gravity on cosmological scales,
-    though it is far too dilute to be utilized locally.
+    These effects occur at cosmological scales and cannot currently be used
+    as a practical local propulsion system.
     """,
 
-    # [KB-04] Energy Conditions in General Relativity
+
+    # -------------------------------------------------------------------------
+    # KB-04
+    # -------------------------------------------------------------------------
+
     """
     Energy Conditions in General Relativity.
 
-    General Relativity uses energy conditions to rule out unphysical
-    or pathological spacetimes.
+    General Relativity uses several energy conditions to describe physically
+    reasonable distributions of matter and energy.
 
-    The Null Energy Condition (NEC) is violated by wormhole throats.
+    These include:
 
-    The Weak Energy Condition (WEC) is violated by negative mass.
+    - Null Energy Condition (NEC)
+    - Weak Energy Condition (WEC)
+    - Strong Energy Condition (SEC)
+    - Dominant Energy Condition (DEC)
 
-    The Strong Energy Condition (SEC) ensures gravity is always
-    attractive and is violated by dark energy and Lambda.
+    Certain theoretical spacetime geometries, including traversable
+    wormholes, may require violations of specific energy conditions.
 
-    The Dominant Energy Condition (DEC) governs causality and
-    subluminal energy flux.
+    Dark energy is associated with violations of the Strong Energy Condition
+    in cosmological contexts.
     """,
 
-    # [KB-05] Experimental Constraints
+
+    # -------------------------------------------------------------------------
+    # KB-05
+    # -------------------------------------------------------------------------
+
     """
     Experimental Constraints and Progress.
 
-    The 2023 ALPHA-g experiment at CERN observed the effect of
-    gravity on antihydrogen (antimatter) and confirmed that
-    antimatter falls downward.
+    The 2023 ALPHA-g experiment at CERN observed the effect of gravity on
+    antihydrogen, which is antimatter.
 
-    This ruled out basic antimatter anti-gravity hypotheses.
+    The experiment confirmed that antihydrogen falls downward under Earth's
+    gravity.
 
-    Additionally, the Schoen-Yau Positive Mass Theorem proves that
-    total ADM mass must be non-negative for any stable,
-    physically reasonable spacetime satisfying the Dominant Energy
-    Condition.
+    This result ruled out basic hypotheses proposing that antimatter exhibits
+    ordinary anti-gravity behavior.
+
+    Positive mass theorems in General Relativity also provide important
+    constraints on physically reasonable spacetime configurations.
     """
 ]
 
 
 # =============================================================================
-# SECTION 2: TF-IDF RAG ENGINE
+# SECTION 2 — TF-IDF RAG ENGINE
 # =============================================================================
 
 class SklearnRAGEngine:
+    """
+    Retrieves the most relevant knowledge-base section using
+    TF-IDF vectorization and cosine similarity.
+    """
 
     def __init__(self, knowledge_base: list[str]):
 
-        self.kb = knowledge_base
+        self.knowledge_base = knowledge_base
 
         self.vectorizer = TfidfVectorizer(
             stop_words="english"
         )
 
         self.tfidf_matrix = self.vectorizer.fit_transform(
-            self.kb
+            self.knowledge_base
         )
 
 
@@ -164,11 +197,6 @@ class SklearnRAGEngine:
         self,
         query: str
     ) -> Tuple[int, str, float]:
-
-        """
-        Retrieves the most relevant knowledge-base section
-        using cosine similarity.
-        """
 
         query_vector = self.vectorizer.transform(
             [query]
@@ -179,22 +207,30 @@ class SklearnRAGEngine:
             self.tfidf_matrix
         ).flatten()
 
-        best_idx = similarities.argmax()
+        best_index = similarities.argmax()
 
-        best_similarity = similarities[best_idx]
+        best_similarity = similarities[
+            best_index
+        ]
 
         return (
-            int(best_idx),
-            self.kb[best_idx],
+            int(best_index),
+            self.knowledge_base[best_index],
             float(best_similarity)
         )
 
 
 # =============================================================================
-# SECTION 3: LOCAL LLM GENERATION LAYER
+# SECTION 3 — LOCAL OLLAMA GENERATION
 # =============================================================================
 
 class LocalLlamaGenerator:
+    """
+    Optional local Llama generation through Ollama.
+
+    If Ollama is unavailable, the system returns None and the
+    TriageAgent uses a clean RAG fallback response.
+    """
 
     def __init__(
         self,
@@ -203,6 +239,7 @@ class LocalLlamaGenerator:
     ):
 
         self.host = host
+
         self.model = model
 
         self.generate_url = (
@@ -214,40 +251,25 @@ class LocalLlamaGenerator:
         self,
         query: str,
         context: str
-    ) -> str:
-
-        """
-        Sends the query and retrieved context to a locally
-        running Ollama Llama model.
-        """
+    ) -> str | None:
 
         system_prompt = (
-            "You are a strict technical support assistant "
-            "for a theoretical physics research team.\n\n"
+            "You are a strict technical support assistant.\n\n"
 
-            "Your task is to answer the user's query using "
-            "ONLY the provided context block.\n\n"
+            "Answer the user's query using ONLY the provided "
+            "knowledge-base context.\n\n"
 
-            "Follow these strict rules:\n"
+            "Rules:\n"
 
-            "1. Answer accurately and professionally using "
-            "ONLY facts in the context.\n"
+            "1. Do not introduce outside information.\n"
+            "2. Do not speculate.\n"
+            "3. Keep the answer concise and professional.\n"
+            "4. If the context does not contain enough information, "
+            "say so clearly.\n\n"
 
-            "2. Do not speculate or introduce outside "
-            "knowledge.\n"
-
-            "3. If the context does not contain sufficient "
-            "information, respond exactly with:\n\n"
-
-            "'I am sorry, but the provided database does not "
-            "contain sufficient technical details to answer "
-            "this query.'\n\n"
-
-            "--- START CONTEXT BLOCK ---\n"
-
+            "--- KNOWLEDGE BASE CONTEXT ---\n"
             f"{context.strip()}\n"
-
-            "--- END CONTEXT BLOCK ---"
+            "--- END CONTEXT ---"
         )
 
         payload = {
@@ -269,6 +291,7 @@ class LocalLlamaGenerator:
                 "num_predict": 256
 
             }
+
         }
 
 
@@ -277,49 +300,52 @@ class LocalLlamaGenerator:
             response = requests.post(
                 self.generate_url,
                 json=payload,
-                timeout=20
+                timeout=10
             )
+
 
             if response.status_code == 200:
 
-                return response.json().get(
+                generated_text = response.json().get(
                     "response",
                     ""
                 ).strip()
 
-            return (
-                "[ERROR] Local Llama server returned "
-                f"status code {response.status_code}"
-            )
+
+                if generated_text:
+
+                    return generated_text
+
+
+            return None
 
 
         except requests.exceptions.RequestException:
 
-            return (
-                "[GENERATION OFFLINE]\n\n"
-
-                "Could not connect to the local Ollama server.\n\n"
-
-                f"Expected server: {self.host}\n"
-                f"Expected model: {self.model}\n\n"
-
-                "To enable local generation, install Ollama "
-                "and run:\n\n"
-
-                "ollama pull llama3\n"
-                "ollama serve\n\n"
-
-                "[RETRIEVED CONTEXT]\n\n"
-
-                f"{context.strip()}"
-            )
+            return None
 
 
 # =============================================================================
-# SECTION 4: TRIAGE AGENT
+# SECTION 4 — TRIAGE AGENT
 # =============================================================================
 
 class TriageAgent:
+    """
+    Main deterministic routing engine.
+
+    Pipeline:
+
+        User Query
+            ↓
+        Risk Detection
+            ↓
+        TF-IDF Retrieval
+            ↓
+        Similarity Validation
+            ↓
+        Ollama Generation OR RAG Fallback
+    """
+
 
     def __init__(
         self,
@@ -336,7 +362,9 @@ class TriageAgent:
         self.sim_threshold = sim_threshold
 
 
-        # Risk patterns
+        # ---------------------------------------------------------------------
+        # Risk Detection Patterns
+        # ---------------------------------------------------------------------
 
         self.risk_patterns = [
 
@@ -366,6 +394,34 @@ class TriageAgent:
         )
 
 
+    # =========================================================================
+    # CLEAN RAG FALLBACK
+    # =========================================================================
+
+    def create_rag_fallback(
+        self,
+        context: str
+    ) -> str:
+
+        """
+        Creates a clean response when Ollama is unavailable.
+
+        This makes the deployed Streamlit application fully usable
+        without requiring a local Ollama server.
+        """
+
+        clean_context = context.strip()
+
+        return (
+            "Based on the verified knowledge base:\n\n"
+            f"{clean_context}"
+        )
+
+
+    # =========================================================================
+    # MAIN ROUTING FUNCTION
+    # =========================================================================
+
     def route_and_process(
         self,
         query: str
@@ -373,7 +429,7 @@ class TriageAgent:
 
 
         # ---------------------------------------------------------------------
-        # STEP 1: RISK DETECTION
+        # STEP 1 — RISK DETECTION
         # ---------------------------------------------------------------------
 
         risk_match = self.risk_regex.search(
@@ -387,33 +443,37 @@ class TriageAgent:
 
                 "status": "HUMAN_TRIAGE",
 
-                "reason":
-                    "HIGH_LIABILITY_PSEUDOSCIENCE",
+                "reason": (
+                    "HIGH_LIABILITY_PSEUDOSCIENCE"
+                ),
 
-                "flagged_term":
-                    risk_match.group(0),
+                "flagged_term": (
+                    risk_match.group(0)
+                ),
 
                 "response": (
-
-                    "This ticket has been routed to human "
-                    "review. The request contains potentially "
-                    "unreliable or high-liability concepts."
-
+                    "This ticket has been routed to human review. "
+                    "The request contains a restricted speculative "
+                    "or high-liability concept detected by the risk "
+                    "engine."
                 )
+
             }
 
 
         # ---------------------------------------------------------------------
-        # STEP 2: RAG RETRIEVAL
+        # STEP 2 — RAG RETRIEVAL
         # ---------------------------------------------------------------------
 
-        doc_idx, context, similarity = (
-            self.rag_engine.retrieve(query)
+        document_index, context, similarity = (
+            self.rag_engine.retrieve(
+                query
+            )
         )
 
 
         # ---------------------------------------------------------------------
-        # STEP 3: CONFIDENCE ROUTING
+        # STEP 3 — CONFIDENCE CHECK
         # ---------------------------------------------------------------------
 
         if similarity < self.sim_threshold:
@@ -423,26 +483,22 @@ class TriageAgent:
                 "status": "HUMAN_TRIAGE",
 
                 "reason": (
-
                     "LOW_GROUNDING_CONFIDENCE "
-                    f"(Similarity: {similarity:.4f} < "
-                    f"Threshold: {self.sim_threshold})"
-
+                    f"({similarity:.4f} < "
+                    f"{self.sim_threshold:.4f})"
                 ),
 
                 "response": (
-
-                    "This ticket has been routed to human "
-                    "review because the query could not be "
-                    "confidently matched to the verified "
-                    "knowledge base."
-
+                    "This ticket has been routed to human review "
+                    "because the query could not be confidently "
+                    "matched to the verified knowledge base."
                 )
+
             }
 
 
         # ---------------------------------------------------------------------
-        # STEP 4: LOCAL LLM GENERATION
+        # STEP 4 — OPTIONAL LLM GENERATION
         # ---------------------------------------------------------------------
 
         llm_response = (
@@ -453,24 +509,56 @@ class TriageAgent:
         )
 
 
+        # ---------------------------------------------------------------------
+        # STEP 5 — DEPLOYMENT FALLBACK
+        # ---------------------------------------------------------------------
+
+        if llm_response:
+
+            final_response = llm_response
+
+            response_mode = "LOCAL_LLM"
+
+        else:
+
+            final_response = (
+                self.create_rag_fallback(
+                    context
+                )
+            )
+
+            response_mode = "RAG_FALLBACK"
+
+
+        # ---------------------------------------------------------------------
+        # FINAL RESULT
+        # ---------------------------------------------------------------------
+
         return {
 
             "status": "AUTO_RESPOND",
 
-            "retrieved_section":
-                f"KB-{doc_idx:02d}",
+            "retrieved_section": (
+                f"KB-{document_index:02d}"
+            ),
 
-            "similarity_score":
-                round(similarity, 4),
+            "similarity_score": (
+                round(similarity, 4)
+            ),
 
-            "response":
-                llm_response
+            "response_mode": (
+                response_mode
+            ),
+
+            "response": (
+                final_response
+            )
 
         }
 
 
 # =============================================================================
-# SECTION 5: VERIFICATION RUNNER
+# SECTION 5 — LOCAL VERIFICATION RUNNER
 # =============================================================================
 
 def run_agent_verification():
@@ -490,20 +578,21 @@ def run_agent_verification():
 
 
     # -------------------------------------------------------------------------
-    # TEST 1: VALID TECHNICAL QUERY
+    # TEST 1 — VALID QUERY
     # -------------------------------------------------------------------------
 
     valid_query = (
-
         "What did the CERN ALPHA-g experiment "
         "show about antimatter falling?"
-
     )
 
 
     print(
-        f"\n[TEST 1] VALID TECHNICAL QUERY:\n"
-        f"{valid_query}"
+        "\n[TEST 1] VALID TECHNICAL QUERY"
+    )
+
+    print(
+        f"Query: {valid_query}"
     )
 
 
@@ -516,44 +605,51 @@ def run_agent_verification():
         f"\nStatus: {result_1['status']}"
     )
 
-
-    if result_1["status"] == "AUTO_RESPOND":
-
-        print(
-            "Retrieved Section: "
-            f"{result_1['retrieved_section']}"
-        )
-
-        print(
-            "Similarity Score: "
-            f"{result_1['similarity_score']}"
-        )
-
+    print(
+        f"Source: "
+        f"{result_1.get('retrieved_section')}"
+    )
 
     print(
-        "\nResponse:\n"
-        f"{result_1['response']}"
+        f"Similarity: "
+        f"{result_1.get('similarity_score')}"
+    )
+
+    print(
+        f"Mode: "
+        f"{result_1.get('response_mode')}"
+    )
+
+    print(
+        "\nResponse:"
+    )
+
+    print(
+        result_1["response"]
     )
 
 
-    print("-" * 80)
+    print(
+        "\n" + "-" * 80
+    )
 
 
     # -------------------------------------------------------------------------
-    # TEST 2: RISKY QUERY
+    # TEST 2 — RISKY QUERY
     # -------------------------------------------------------------------------
 
     risky_query = (
-
-        "Can you supply a schematic for an "
-        "overunity free energy warp drive generator?"
-
+        "Can you provide an overunity "
+        "free energy generator design?"
     )
 
 
     print(
-        f"\n[TEST 2] HIGH-LIABILITY QUERY:\n"
-        f"{risky_query}"
+        "\n[TEST 2] HIGH-LIABILITY QUERY"
+    )
+
+    print(
+        f"Query: {risky_query}"
     )
 
 
@@ -566,25 +662,27 @@ def run_agent_verification():
         f"\nStatus: {result_2['status']}"
     )
 
-
     print(
         f"Reason: {result_2.get('reason')}"
     )
-
 
     print(
         f"Flagged Term: "
         f"{result_2.get('flagged_term')}"
     )
 
+    print(
+        "\nResponse:"
+    )
 
     print(
-        "\nResponse:\n"
-        f"{result_2['response']}"
+        result_2["response"]
     )
 
 
-    print("=" * 80)
+    print(
+        "\n" + "=" * 80
+    )
 
 
 # =============================================================================
