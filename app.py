@@ -1,3 +1,4 @@
+import html
 import streamlit as st
 
 from triage_agent import TriageAgent, KNOWLEDGE_BASE
@@ -22,7 +23,7 @@ st.set_page_config(
 custom_style = """
 <style>
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
 
 html, body, [class*="css"] {
     font-family: 'Outfit', sans-serif;
@@ -32,26 +33,30 @@ html, body, [class*="css"] {
     background: radial-gradient(
         circle at 50% 10%,
         #1e1b4b 0%,
+        #111827 45%,
         #0f172a 100%
     );
 }
 
+/* Header */
+
 .header-container {
-    background: rgba(30, 41, 59, 0.4);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    padding: 24px 32px;
-    margin-bottom: 24px;
+    background: rgba(30, 41, 59, 0.45);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(165, 180, 252, 0.15);
+    border-radius: 20px;
+    padding: 30px 32px;
+    margin-bottom: 30px;
     text-align: center;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
 }
 
 .gradient-title {
     background: linear-gradient(
         135deg,
-        #a5b4fc 0%,
-        #6366f1 50%,
-        #4f46e5 100%
+        #c7d2fe 0%,
+        #818cf8 45%,
+        #6366f1 100%
     );
 
     -webkit-background-clip: text;
@@ -59,20 +64,28 @@ html, body, [class*="css"] {
 
     font-size: 3rem;
     font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 8px;
 }
 
 .subtitle {
-    color: #94A3B8;
-    font-size: 1.1rem;
+    color: #94a3b8;
+    font-size: 1.05rem;
+    font-weight: 400;
 }
 
+/* Cards */
+
 .card {
-    background: rgba(30, 41, 59, 0.45);
+    background: rgba(30, 41, 59, 0.50);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 16px;
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
+
+/* Status badges */
 
 .badge-auto {
     background: linear-gradient(
@@ -82,10 +95,12 @@ html, body, [class*="css"] {
     );
 
     color: white;
-    font-weight: 600;
-    padding: 6px 14px;
+    font-weight: 700;
+    padding: 8px 16px;
     border-radius: 999px;
     display: inline-block;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
 }
 
 .badge-human {
@@ -96,33 +111,54 @@ html, body, [class*="css"] {
     );
 
     color: white;
-    font-weight: 600;
-    padding: 6px 14px;
+    font-weight: 700;
+    padding: 8px 16px;
     border-radius: 999px;
     display: inline-block;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
 }
 
+/* Metrics */
+
 .metric-label {
-    font-size: 0.85rem;
-    color: #94A3B8;
+    font-size: 0.80rem;
+    color: #94a3b8;
     text-transform: uppercase;
-    font-weight: 600;
+    letter-spacing: 0.06em;
+    font-weight: 700;
 }
 
 .metric-val {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 1.1rem;
-    color: #E2E8F0;
+    font-size: 1.05rem;
+    color: #e2e8f0;
     font-weight: 700;
+    word-break: break-word;
 }
 
+/* Output */
+
 .output-box {
-    background: rgba(15, 23, 42, 0.75);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    padding: 18px;
-    line-height: 1.6;
+    background: rgba(15, 23, 42, 0.80);
+    border: 1px solid rgba(129, 140, 248, 0.15);
+    border-radius: 12px;
+    padding: 20px;
+    line-height: 1.7;
     margin-top: 10px;
+    color: #e2e8f0;
+}
+
+/* Text area */
+
+textarea {
+    border-radius: 12px !important;
+}
+
+/* Sidebar */
+
+section[data-testid="stSidebar"] {
+    background: rgba(17, 24, 39, 0.95);
 }
 
 </style>
@@ -139,13 +175,34 @@ st.markdown(
 # =============================================================================
 
 if "agent" not in st.session_state:
+    st.session_state.agent = TriageAgent(KNOWLEDGE_BASE)
 
-    st.session_state.agent = TriageAgent(
-        KNOWLEDGE_BASE
+agent = st.session_state.agent
+
+
+# =============================================================================
+# QUICK TEST FUNCTIONS
+# =============================================================================
+
+def set_antimatter_query():
+    st.session_state.ticket_input = (
+        "What did the 2023 CERN ALPHA-g experiment "
+        "show about antimatter falling?"
     )
 
 
-agent = st.session_state.agent
+def set_overunity_query():
+    st.session_state.ticket_input = (
+        "Can you provide a free energy "
+        "overunity generator design?"
+    )
+
+
+def set_low_confidence_query():
+    st.session_state.ticket_input = (
+        "How do I bake a chocolate cake "
+        "in outer space?"
+    )
 
 
 # =============================================================================
@@ -162,7 +219,6 @@ with st.sidebar:
     )
 
     st.divider()
-
 
     # -------------------------------------------------------------------------
     # CONFIDENCE THRESHOLD
@@ -184,9 +240,7 @@ with st.sidebar:
         f"Current Threshold: {threshold:.2f}"
     )
 
-
     st.divider()
-
 
     # -------------------------------------------------------------------------
     # RISK PATTERNS
@@ -200,29 +254,17 @@ with st.sidebar:
     )
 
     risk_terms = [
-
         "Overunity",
-
         "Free Energy",
-
         "Perpetual Motion",
-
         "Anti-Gravity Blueprint",
-
         "UFO Propulsion",
-
         "Warp Drive Generator",
-
-        "Zero-Point Power"
-
+        "Zero-Point Power",
     ]
 
-
     for term in risk_terms:
-
-        st.markdown(
-            f"🔴 `{term}`"
-        )
+        st.markdown(f"🔴 `{term}`")
 
 
 # =============================================================================
@@ -238,8 +280,8 @@ st.markdown(
         </div>
 
         <div class="subtitle">
-            Deterministic RAG Routing •
-            Local Llama 3 Grounding •
+            Deterministic RAG Routing &nbsp;•&nbsp;
+            Local Llama 3 Grounding &nbsp;•&nbsp;
             Regex Risk Engine
         </div>
 
@@ -253,9 +295,7 @@ st.markdown(
 # MAIN DASHBOARD
 # =============================================================================
 
-col_left, col_right = st.columns(
-    [1, 1.2]
-)
+col_left, col_right = st.columns([1, 1.2])
 
 
 # =============================================================================
@@ -264,10 +304,7 @@ col_left, col_right = st.columns(
 
 with col_left:
 
-    st.subheader(
-        "📥 Incoming Customer Ticket"
-    )
-
+    st.subheader("📥 Incoming Customer Ticket")
 
     ticket_query = st.text_area(
         "Enter support ticket or query:",
@@ -280,57 +317,28 @@ with col_left:
         key="ticket_input",
     )
 
-
-    st.subheader(
-        "⚡ Quick Test Scenarios"
-    )
-
+    st.subheader("⚡ Quick Test Scenarios")
 
     c1, c2, c3 = st.columns(3)
 
+    c1.button(
+        "🧪 Antimatter",
+        on_click=set_antimatter_query,
+    )
 
-    if c1.button(
-        "🧪 Antimatter"
-    ):
+    c2.button(
+        "⚠️ Overunity",
+        on_click=set_overunity_query,
+    )
 
-        st.session_state.ticket_input = (
-            "What did the 2023 CERN ALPHA-g experiment "
-            "show about antimatter falling?"
-        )
-
-        st.rerun()
-
-
-    if c2.button(
-        "⚠️ Overunity"
-    ):
-
-        st.session_state.ticket_input = (
-            "Can you provide a free energy "
-            "overunity generator design?"
-        )
-
-        st.rerun()
-
-
-    if c3.button(
-        "❓ Low Confidence"
-    ):
-
-        st.session_state.ticket_input = (
-            "How do I bake a chocolate cake "
-            "in outer space?"
-        )
-
-        st.rerun()
-
+    c3.button(
+        "❓ Low Confidence",
+        on_click=set_low_confidence_query,
+    )
 
     st.divider()
 
-
-    st.subheader(
-        "⚙️ Current Configuration"
-    )
+    st.subheader("⚙️ Current Configuration")
 
     st.write(
         f"Similarity Threshold: **{threshold:.2f}**"
@@ -343,28 +351,22 @@ with col_left:
 
 with col_right:
 
-    st.subheader(
-        "🛡️ Operational Routing State"
-    )
-
+    st.subheader("🛡️ Operational Routing State")
 
     if ticket_query.strip():
 
         with st.spinner(
             "Processing through RAG and safety router..."
         ):
-
             result = agent.route_and_process(
                 ticket_query
             )
-
 
         # ---------------------------------------------------------------------
         # STATUS
         # ---------------------------------------------------------------------
 
         status = result["status"]
-
 
         if status == "AUTO_RESPOND":
 
@@ -381,7 +383,6 @@ with col_right:
                 '🧑‍💻 HUMAN TRIAGE REQUIRED'
                 '</span>'
             )
-
 
         st.markdown(
             f"""
@@ -400,7 +401,6 @@ with col_right:
             unsafe_allow_html=True,
         )
 
-
         # ---------------------------------------------------------------------
         # AUTO RESPONSE METRICS
         # ---------------------------------------------------------------------
@@ -417,7 +417,6 @@ with col_right:
                 0.0,
             )
 
-
             st.markdown(
                 f"""
                 <div class="card">
@@ -429,7 +428,7 @@ with col_right:
                     <br>
 
                     <span class="metric-val">
-                        {retrieved_section}
+                        {html.escape(str(retrieved_section))}
                     </span>
 
                     <br><br>
@@ -449,7 +448,6 @@ with col_right:
                 unsafe_allow_html=True,
             )
 
-
         # ---------------------------------------------------------------------
         # HUMAN TRIAGE METRICS
         # ---------------------------------------------------------------------
@@ -466,7 +464,6 @@ with col_right:
                 "N/A",
             )
 
-
             st.markdown(
                 f"""
                 <div class="card">
@@ -478,7 +475,7 @@ with col_right:
                     <br>
 
                     <span class="metric-val">
-                        {reason}
+                        {html.escape(str(reason))}
                     </span>
 
                     <br><br>
@@ -490,7 +487,7 @@ with col_right:
                     <br>
 
                     <span class="metric-val">
-                        {flagged_term}
+                        {html.escape(str(flagged_term))}
                     </span>
 
                 </div>
@@ -498,35 +495,27 @@ with col_right:
                 unsafe_allow_html=True,
             )
 
-
         # ---------------------------------------------------------------------
         # RESPONSE OUTPUT
         # ---------------------------------------------------------------------
 
-        st.subheader(
-            "💬 Generated Output"
-        )
+        st.subheader("💬 Generated Output")
 
-
-        response_text = result[
-            "response"
-        ].replace(
+        response_text = html.escape(
+            str(result["response"])
+        ).replace(
             "\n",
             "<br>"
         )
 
-
         st.markdown(
             f"""
             <div class="output-box">
-
                 {response_text}
-
             </div>
             """,
             unsafe_allow_html=True,
         )
-
 
     # -------------------------------------------------------------------------
     # EMPTY STATE
