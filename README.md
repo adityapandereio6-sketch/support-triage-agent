@@ -1,6 +1,8 @@
 # Deterministic Support Triage Agent
 
-🚀 A deterministic AI support triage system using TF-IDF RAG, cosine similarity, regex-based risk detection, and local LLM generation through Ollama.
+🚀 **Live Demo:** [Open NEXA Support Triage Dashboard](https://support-triage-agent-havm8qsnc7y5ma8kktsupu.streamlit.app/)
+
+A deterministic AI support triage system using TF-IDF RAG, cosine similarity, regex-based risk detection, and optional local Llama 3 generation through Ollama.
 
 ## Overview
 
